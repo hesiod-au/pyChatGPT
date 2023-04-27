@@ -12,8 +12,11 @@ import logging
 import weakref
 import json
 import time
+from datetime import datetime
 import re
 import os
+model = os.environ.get('model', 'gpt-3.5')
+
 
 
 cf_challenge_form = (By.ID, 'challenge-form')
@@ -27,7 +30,8 @@ chatgpt_small_response = (
 )
 chatgpt_alert = (By.XPATH, '//div[@role="alert"]')
 chatgpt_intro = (By.ID, 'headlessui-portal-root')
-chatgpt_login_btn = (By.XPATH, '//button[text()="Log in"]')
+# chatgpt_login_btn = (By.XPATH, '//button[text()="Log in"]')
+chatgpt_login_btn = (By.XPATH, '//button[contains(div, "Log in")]')
 chatgpt_login_h1 = (By.XPATH, '//h1[text()="Welcome back"]')
 chatgpt_logged_h1 = (By.XPATH, '//h1[text()="ChatGPT"]')
 
@@ -38,9 +42,11 @@ chatgpt_chats_list_first_node = (
     By.XPATH,
     '//div[substring(@class, string-length(@class) - string-length("text-sm") + 1)  = "text-sm"]//a',
 )
-
-chatgpt_chat_url = 'https://chat.openai.com/chat'
-
+chatgpt_chat_url = 'https://chat.openai.com'
+if model == "gpt-4":
+    new_chat_url = chatgpt_chat_url + '/?model=gpt-4'
+else:
+    new_chat_url = chatgpt_chat_url
 
 class ChatGPT:
     '''
@@ -223,11 +229,29 @@ class ChatGPT:
         self.__ensure_cf()
 
         self.logger.debug('Opening chat page...')
-        self.driver.get(f'{chatgpt_chat_url}/{self.__conversation_id}')
+        conv_str = ''
+        if self.__conversation_id != "":
+            conv_str = f'/{self.__conversation_id}'
+        self.driver.get(f'{new_chat_url}{conv_str}')
         self.__check_blocking_elements()
 
         self.__is_active = True
+        if model == "gpt-4":
+            self.__select_gpt4()
         Thread(target=self.__keep_alive, daemon=True).start()
+
+    def __select_gpt4(self) -> None:
+        partial_id = "headlessui-listbox-button-"
+        css_selector = f'[id*="{partial_id}"]'
+        select_button = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        select_button.click()
+        partial_id = "headlessui-listbox-option-"
+        css_selector = f'[id*="{partial_id}"]'
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        model_items = self.driver.find_elements(By.CSS_SELECTOR, css_selector)
+        for model in model_items:
+            if model.text == "GPT-4":
+                model.click()
 
     def __ensure_cf(self, retry: int = 3) -> None:
         '''
@@ -406,7 +430,9 @@ class ChatGPT:
         '''
         self.logger.debug('Ensuring Cloudflare cookies...')
         self.__ensure_cf()
-
+        skp_onbrd_key = "oai/apps/hasSeenOnboarding/chat"
+        skp_onbrd_value = datetime.now().strftime('%Y-%m-%d')
+        self.driver.execute_script(f'localStorage.setItem("{skp_onbrd_key}", "\\"{skp_onbrd_value}\\"");')
         self.logger.debug('Sending message...')
         textbox = WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable(chatgpt_textbox)
@@ -457,8 +483,9 @@ class ChatGPT:
             ).click()
             time.sleep(0.5)
             matches = pattern.search(self.driver.current_url)
-        conversation_id = matches.group()
-        return {'message': content, 'conversation_id': conversation_id}
+        # conversation_id = matches.group()
+        # return {'message': content, 'conversation_id': conversation_id}
+        return {'message': content}
 
     def reset_conversation(self) -> None:
         '''

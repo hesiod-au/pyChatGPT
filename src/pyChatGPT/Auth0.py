@@ -62,11 +62,14 @@ def __google_login(self) -> None:
         WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable(google_email_input)
         ).send_keys(self._ChatGPT__email)
-
+        
+        time.sleep(6)
         self.logger.debug('Clicking Next...')
+
         self.driver.find_element(*google_next_btn).click()
 
         self.logger.debug('Entering password...')
+        time.sleep(3)
         WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable(google_pwd_input)
         ).send_keys(self._ChatGPT__password)
