@@ -238,7 +238,7 @@ class ChatGPT:
 
         self.logger.debug('Opening chat page...')
         if self.__conversation_id is not None:
-            self.driver.get(f'{chatgpt_chat_url}/{self.__conversation_id}')
+            self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.driver.get(f'{new_chat_url}')
         self.__check_blocking_elements()
 
@@ -432,7 +432,7 @@ class ChatGPT:
     def __fetch_conversation_id(self):
 
         # Retrieve token from Selenium request
-        for request in self.driver.requests:
+        for request in self.driver.requests.reverse():
             if request.method == "GET" and request.path == "/backend-api/conversations":
                 print("matched request")
                 try:
@@ -455,12 +455,14 @@ class ChatGPT:
         print("CURL COMMAND:")
         print(command)
 
-    def send_message(self, message: str, stream: bool = False) -> dict:
+    def send_message(self, message: str, stream: bool = False, id: str = "0") -> dict:
         '''
         Send a message to ChatGPT\n
         :param message: Message to send
         :return: Dictionary with keys `message` and `conversation_id`
         '''
+        if id != "0" and id != self.__conversation_id:
+            self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.logger.debug('Ensuring Cloudflare cookies...')
         self.__ensure_cf()
         skp_onbrd_key = "oai/apps/hasSeenOnboarding/chat"
@@ -575,7 +577,7 @@ class ChatGPT:
         if not self.driver.current_url.startswith(chatgpt_chat_url):
             return self.logger.debug('Current URL is not chat page, skipping refresh')
 
-        self.driver.get(chatgpt_chat_url)
+        self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.__check_capacity(chatgpt_chat_url)
         self.__check_blocking_elements()
         if model == "gpt-4":
