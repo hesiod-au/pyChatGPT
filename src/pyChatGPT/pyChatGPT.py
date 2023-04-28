@@ -1,22 +1,28 @@
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common import exceptions as SeleniumExceptions
-from selenium.webdriver.support.ui import WebDriverWait
+#from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from seleniumwire.utils import decode as sw_decode
 
-import undetected_chromedriver as uc
+import requests
+
+#import undetected_chromedriver as uc
+import seleniumwire.undetected_chromedriver as uc
 from markdownify import markdownify
 from threading import Thread
 import platform
 import logging
 import weakref
 import json
+from json import JSONDecodeError
 import time
 from datetime import datetime
 import re
 import os
-model = os.environ.get('model', 'gpt-3.5')
 
+model = os.environ.get('model', 'gpt-3.5')
 
 
 cf_challenge_form = (By.ID, 'challenge-form')
@@ -47,6 +53,7 @@ if model == "gpt-4":
     new_chat_url = chatgpt_chat_url + '/?model=gpt-4'
 else:
     new_chat_url = chatgpt_chat_url
+
 
 class ChatGPT:
     '''
@@ -143,6 +150,7 @@ class ChatGPT:
         if hasattr(self, 'display'):
             self.logger.debug('Closing display...')
             self.display.stop()
+ 
 
     def __init_logger(self, verbose: bool) -> None:
         '''
@@ -229,10 +237,9 @@ class ChatGPT:
         self.__ensure_cf()
 
         self.logger.debug('Opening chat page...')
-        conv_str = ''
-        if self.__conversation_id != "":
-            conv_str = f'/{self.__conversation_id}'
-        self.driver.get(f'{new_chat_url}{conv_str}')
+        if self.__conversation_id is not None:
+            self.driver.get(f'{chatgpt_chat_url}/{self.__conversation_id}')
+        self.driver.get(f'{new_chat_url}')
         self.__check_blocking_elements()
 
         self.__is_active = True
@@ -339,7 +346,7 @@ class ChatGPT:
 
         from . import Auth0
 
-        Auth0.login(self)
+        Auth0.login(self) 
 
         self.logger.debug('Checking if login was successful')
         try:
@@ -422,6 +429,32 @@ class ChatGPT:
             if not result_streaming:
                 break
 
+    def __fetch_conversation_id(self):
+
+        # Retrieve token from Selenium request
+        for request in self.driver.requests:
+            if request.method == "GET" and request.path == "/backend-api/conversations":
+                print("matched request")
+                try:
+                    resp_body_data = json.loads(sw_decode(request.response.body, (request.response.headers.get('Content-Encoding', 'identity'))).decode('utf-8'))
+                except JSONDecodeError:
+                    self.__debug_request(request.response.body.sw_decode(request.response.headers.get('Content-Encoding', 'identity')))
+                    self.__conversation_id = "8888888888888888"
+                break
+                    
+        if resp_body_data is None:
+            print(f"Request not matched! REQUESTS: {self.driver.requests}")
+            self.__conversation_id = ""
+            return
+        self.__conversation_id = resp_body_data['items'][0]['id']
+
+    def __debug_request(self, prepared_request):
+        command = f"curl -X {prepared_request.method} '{prepared_request.url}'"
+        for header, value in prepared_request.headers.items():
+            command += f" -H '{header}: {value}'" 
+        print("CURL COMMAND:")
+        print(command)
+
     def send_message(self, message: str, stream: bool = False) -> dict:
         '''
         Send a message to ChatGPT\n
@@ -472,20 +505,26 @@ class ChatGPT:
         content = markdownify(response.get_attribute('innerHTML')).replace(
             'Copy code`', '`'
         )
-        pattern = re.compile(
-            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-        )
-        matches = pattern.search(self.driver.current_url)
-        if not matches:
-            self.reset_conversation()
-            WebDriverWait(self.driver, 5).until(
-                EC.element_to_be_clickable(chatgpt_chats_list_first_node)
-            ).click()
-            time.sleep(0.5)
-            matches = pattern.search(self.driver.current_url)
-        # conversation_id = matches.group()
-        # return {'message': content, 'conversation_id': conversation_id}
-        return {'message': content}
+        if not self.__conversation_id:
+            # id_to_use = ""
+            self.__fetch_conversation_id()
+            id_to_use = self.__conversation_id
+        return {
+            "id": id_to_use,
+            "object": "chat.completion",
+            "model": "gpt",
+            "usage":  {
+                "total_tokens": 0
+            },
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": content
+                    },
+                }
+            ]
+        }
 
     def reset_conversation(self) -> None:
         '''
@@ -502,6 +541,7 @@ class ChatGPT:
             self.driver.save_screenshot('reset_conversation_failed.png')
         if model == "gpt-4":
             self.__select_gpt4()
+        self.__conversation_id = None
 
     def clear_conversations(self) -> None:
         '''
