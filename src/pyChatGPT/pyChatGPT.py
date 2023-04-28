@@ -509,7 +509,8 @@ class ChatGPT:
             'Copy code`', '`'
         )
         if not self.__conversation_id:
-            # id_to_use = ""
+            # Wait for any request for conversations to have returned
+            time.sleep(10)
             self.__fetch_conversation_id()
         id_to_use = self.__conversation_id
         return {
