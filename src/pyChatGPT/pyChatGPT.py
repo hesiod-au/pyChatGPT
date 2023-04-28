@@ -430,21 +430,22 @@ class ChatGPT:
                 break
 
     def __fetch_conversation_id(self):
-
         # Retrieve token from Selenium request
-        for request in self.driver.requests.reverse():
+        request_list = self.driver.requests
+        request_list.reverse()
+        for request in request_list:
             if request.method == "GET" and request.path == "/backend-api/conversations":
                 print("matched request")
                 try:
                     resp_body_data = json.loads(sw_decode(request.response.body, (request.response.headers.get('Content-Encoding', 'identity'))).decode('utf-8'))
                 except JSONDecodeError:
                     self.__debug_request(request.response.body.sw_decode(request.response.headers.get('Content-Encoding', 'identity')))
-                    self.__conversation_id = "8888888888888888"
+                    self.__conversation_id = "0"
                 break
-                    
+
         if resp_body_data is None:
             print(f"Request not matched! REQUESTS: {self.driver.requests}")
-            self.__conversation_id = ""
+            self.__conversation_id = "0"
             return
         self.__conversation_id = resp_body_data['items'][0]['id']
 
