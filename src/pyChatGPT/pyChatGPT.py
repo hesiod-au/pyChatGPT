@@ -508,7 +508,7 @@ class ChatGPT:
         if not self.__conversation_id:
             # id_to_use = ""
             self.__fetch_conversation_id()
-            id_to_use = self.__conversation_id
+        id_to_use = self.__conversation_id
         return {
             "id": id_to_use,
             "object": "chat.completion",
