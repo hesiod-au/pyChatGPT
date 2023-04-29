@@ -22,8 +22,6 @@ from datetime import datetime
 import re
 import os
 
-model = os.environ.get('model', 'gpt-3.5')
-
 
 cf_challenge_form = (By.ID, 'challenge-form')
 
@@ -49,10 +47,6 @@ chatgpt_chats_list_first_node = (
     '//div[substring(@class, string-length(@class) - string-length("text-sm") + 1)  = "text-sm"]//a',
 )
 chatgpt_chat_url = 'https://chat.openai.com'
-if model == "gpt-4":
-    new_chat_url = chatgpt_chat_url + '/?model=gpt-4'
-else:
-    new_chat_url = chatgpt_chat_url
 
 
 class ChatGPT:
@@ -74,6 +68,7 @@ class ChatGPT:
         chrome_args: list = [],
         moderation: bool = True,
         verbose: bool = False,
+        model: str = "3.5"
     ):
         '''
         Initialize the ChatGPT object\n
@@ -103,6 +98,7 @@ class ChatGPT:
         self.__proxy = proxy
         self.__chrome_args = chrome_args
         self.__moderation = moderation
+        self.__model = model
 
         if not self.__session_token and (
             not self.__email or not self.__password or not self.__auth_type
@@ -238,12 +234,12 @@ class ChatGPT:
 
         self.logger.debug('Opening chat page...')
         if self.__conversation_id is not None:
-            self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
-        self.driver.get(f'{new_chat_url}')
+            self.driver.get(f'{chatgpt_chat_url}/{self.__conversation_id}')
+        self.driver.get(f'{chatgpt_chat_url}')
         self.__check_blocking_elements()
 
         self.__is_active = True
-        if model == "gpt-4":
+        if self.__model == "4":
             self.__select_gpt4()
         Thread(target=self.__keep_alive, daemon=True).start()
 
@@ -543,7 +539,7 @@ class ChatGPT:
         except SeleniumExceptions.NoSuchElementException:
             self.logger.debug('New chat button not found')
             self.driver.save_screenshot('reset_conversation_failed.png')
-        if model == "gpt-4":
+        if self.__model == "4":
             self.__select_gpt4()
         self.__conversation_id = None
 
@@ -582,5 +578,5 @@ class ChatGPT:
         self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.__check_capacity(chatgpt_chat_url)
         self.__check_blocking_elements()
-        if model == "gpt-4":
+        if self.__model == "4":
             self.__select_gpt4()
