@@ -1,15 +1,13 @@
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common import exceptions as SeleniumExceptions
-#from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
+#from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
-from seleniumwire.utils import decode as sw_decode
 
-import requests
 
-#import undetected_chromedriver as uc
-import seleniumwire.undetected_chromedriver as uc
+import undetected_chromedriver as uc
+#import seleniumwire.undetected_chromedriver as uc
 from markdownify import markdownify
 from threading import Thread
 import platform
@@ -146,7 +144,6 @@ class ChatGPT:
         if hasattr(self, 'display'):
             self.logger.debug('Closing display...')
             self.display.stop()
- 
 
     def __init_logger(self, verbose: bool) -> None:
         '''
@@ -425,33 +422,6 @@ class ChatGPT:
             if not result_streaming:
                 break
 
-    def __fetch_conversation_id(self):
-        # Retrieve token from Selenium request
-        request_list = self.driver.requests
-        request_list.reverse()
-        for request in request_list:
-            if request.method == "GET" and request.path == "/backend-api/conversations":
-                print("matched request")
-                try:
-                    resp_body_data = json.loads(sw_decode(request.response.body, (request.response.headers.get('Content-Encoding', 'identity'))).decode('utf-8'))
-                except JSONDecodeError:
-                    self.__debug_request(request.response.body.sw_decode(request.response.headers.get('Content-Encoding', 'identity')))
-                    self.__conversation_id = "0"
-                break
-
-        if resp_body_data is None:
-            print(f"Request not matched! REQUESTS: {self.driver.requests}")
-            self.__conversation_id = "0"
-            return
-        self.__conversation_id = resp_body_data['items'][0]['id']
-
-    def __debug_request(self, prepared_request):
-        command = f"curl -X {prepared_request.method} '{prepared_request.url}'"
-        for header, value in prepared_request.headers.items():
-            command += f" -H '{header}: {value}'" 
-        print("CURL COMMAND:")
-        print(command)
-
     def send_message(self, message: str, stream: bool = False, id: str = "0") -> dict:
         '''
         Send a message to ChatGPT\n
@@ -505,10 +475,9 @@ class ChatGPT:
             'Copy code`', '`'
         )
         if not self.__conversation_id:
-            # Wait for any request for conversations to have returned
-            time.sleep(10)
-            self.__fetch_conversation_id()
-        id_to_use = self.__conversation_id
+            id_to_use = "unknown"
+        else:
+            id_to_use = self.__conversation_id
         return {
             "id": id_to_use,
             "object": "chat.completion",
