@@ -296,6 +296,7 @@ class ChatGPT:
         self.logger.debug('Closing tab...')
         self.driver.close()
         self.driver.switch_to.window(original_window)
+        self.driver.minimize_window()
 
     def __check_capacity(self, target_url: str):
         '''
@@ -339,7 +340,7 @@ class ChatGPT:
 
         from . import Auth0
 
-        Auth0.login(self) 
+        Auth0.login(self)
 
         self.logger.debug('Checking if login was successful')
         try:
@@ -364,6 +365,7 @@ class ChatGPT:
         self.logger.debug('Closing tab...')
         self.driver.close()
         self.driver.switch_to.window(original_window)
+        self.driver.minimize_window()
 
     def __keep_alive(self) -> None:
         '''
@@ -450,6 +452,7 @@ class ChatGPT:
             message,
         )
         textbox.send_keys(Keys.ENTER)
+        self.driver.minimize_window()
 
         if stream:
             for i in self.__stream_message():
@@ -511,6 +514,7 @@ class ChatGPT:
         if self.__model == "4":
             self.__select_gpt4()
         self.__conversation_id = None
+        self.driver.minimize_window()
 
     def clear_conversations(self) -> None:
         '''
@@ -549,3 +553,4 @@ class ChatGPT:
         self.__check_blocking_elements()
         if self.__model == "4":
             self.__select_gpt4()
+        self.driver.minimize_window()
