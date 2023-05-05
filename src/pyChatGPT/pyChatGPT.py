@@ -238,6 +238,7 @@ class ChatGPT:
         self.__is_active = True
         if self.__model == "4":
             self.__select_gpt4()
+        self.driver.minimize_window()
         Thread(target=self.__keep_alive, daemon=True).start()
 
     def __select_gpt4(self) -> None:
@@ -477,6 +478,7 @@ class ChatGPT:
         content = markdownify(response.get_attribute('innerHTML')).replace(
             'Copy code`', '`'
         )
+        self.driver.minimize_window()
         if not self.__conversation_id:
             id_to_use = "unknown"
         else:
