@@ -436,7 +436,7 @@ class ChatGPT:
         self.logger.debug('Ensuring Cloudflare cookies...')
         self.__ensure_cf()
         skp_onbrd_key = "oai/apps/hasSeenOnboarding/chat"
-        skp_onbrd_value = datetime.now().strftime('%Y-%m-%d')
+        skp_onbrd_value = datetime.now().strftime('%m/%d/%Y')
         self.driver.execute_script(f'localStorage.setItem("{skp_onbrd_key}", "\\"{skp_onbrd_value}\\"");')
         self.logger.debug('Sending message...')
         textbox = WebDriverWait(self.driver, 5).until(
