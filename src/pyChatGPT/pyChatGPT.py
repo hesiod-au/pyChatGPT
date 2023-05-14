@@ -32,6 +32,8 @@ chatgpt_small_response = (
 )
 chatgpt_alert = (By.XPATH, '//div[@role="alert"]')
 chatgpt_intro = (By.ID, 'headlessui-portal-root')
+chatgpt_intro_next = (By.XPATH, "//*[text()='Next']")
+chatgpt_intro_done = (By.XPATH, "//*[text()='Done']")
 # chatgpt_login_btn = (By.XPATH, '//button[text()="Log in"]')
 chatgpt_login_btn = (By.XPATH, '//button[contains(div, "Log in")]')
 chatgpt_login_h1 = (By.XPATH, '//h1[text()="Welcome back"]')
@@ -218,7 +220,6 @@ class ChatGPT:
                     'secure': True,
                 },
             )
-
         if not self.__moderation:
             self.logger.debug('Blocking moderation...')
             self.driver.execute_cdp_cmd(
@@ -232,7 +233,11 @@ class ChatGPT:
         self.logger.debug('Opening chat page...')
         if self.__conversation_id is not None:
             self.driver.get(f'{chatgpt_chat_url}/{self.__conversation_id}')
-        self.driver.get(f'{chatgpt_chat_url}')
+        else:
+            self.driver.get(f'{chatgpt_chat_url}')
+        skp_onbrd_key = "oai/apps/hasSeenOnboarding/chat"
+        skp_onbrd_value = datetime.now().strftime('%Y-%m-%d')
+        self.driver.execute_script(f'localStorage.setItem("{skp_onbrd_key}", "\\"{skp_onbrd_value}\\"");')
         self.__check_blocking_elements()
 
         self.__is_active = True
@@ -297,7 +302,6 @@ class ChatGPT:
         self.logger.debug('Closing tab...')
         self.driver.close()
         self.driver.switch_to.window(original_window)
-        self.driver.minimize_window()
 
     def __check_capacity(self, target_url: str):
         '''
@@ -394,11 +398,21 @@ class ChatGPT:
         '''
         self.logger.debug('Looking for blocking elements...')
         try:
-            intro = WebDriverWait(self.driver, 3).until(
-                EC.presence_of_element_located(chatgpt_intro)
+            intro = WebDriverWait(self.driver, 6).until(
+                EC.presence_of_element_located(chatgpt_intro_next)
             )
             self.logger.debug('Dismissing intro...')
-            self.driver.execute_script('arguments[0].remove()', intro)
+            intro.click()
+            intro = WebDriverWait(self.driver, 6).until(
+                EC.presence_of_element_located(chatgpt_intro_next)
+            )
+            self.logger.debug('Dismissing intro...')
+            intro.click()
+            intro = WebDriverWait(self.driver, 6).until(
+                EC.presence_of_element_located(chatgpt_intro_done)
+            )
+            self.logger.debug('Dismissing intro...')
+            intro.click()
         except SeleniumExceptions.TimeoutException:
             pass
 
@@ -435,9 +449,6 @@ class ChatGPT:
             self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.logger.debug('Ensuring Cloudflare cookies...')
         self.__ensure_cf()
-        skp_onbrd_key = "oai/apps/hasSeenOnboarding/chat"
-        skp_onbrd_value = datetime.now().strftime('%m/%d/%Y')
-        self.driver.execute_script(f'localStorage.setItem("{skp_onbrd_key}", "\\"{skp_onbrd_value}\\"");')
         self.logger.debug('Sending message...')
         textbox = WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable(chatgpt_textbox)
