@@ -247,17 +247,18 @@ class ChatGPT:
         Thread(target=self.__keep_alive, daemon=True).start()
 
     def __select_gpt4(self) -> None:
-        partial_id = "headlessui-listbox-button-"
-        css_selector = f'[id*="{partial_id}"]'
-        select_button = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
-        select_button.click()
-        partial_id = "headlessui-listbox-option-"
-        css_selector = f'[id*="{partial_id}"]'
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
-        model_items = self.driver.find_elements(By.CSS_SELECTOR, css_selector)
-        for model in model_items:
-            if model.text == "GPT-4":
-                model.click()
+        self.driver.get(f'{chatgpt_chat_url}/?model=gpt-4-browsing')
+        # partial_id = "headlessui-listbox-button-"
+        # css_selector = f'[id*="{partial_id}"]'
+        # select_button = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        # select_button.click()
+        # partial_id = "headlessui-listbox-option-"
+        # css_selector = f'[id*="{partial_id}"]'
+        # WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        # model_items = self.driver.find_elements(By.CSS_SELECTOR, css_selector)
+        # for model in model_items:
+        #     if model.text == "GPT-4":
+        #         model.click()
 
     def __ensure_cf(self, retry: int = 3) -> None:
         '''
