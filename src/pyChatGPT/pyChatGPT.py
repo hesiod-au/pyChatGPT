@@ -446,6 +446,7 @@ class ChatGPT:
         :param message: Message to send
         :return: Dictionary with keys `message` and `conversation_id`
         '''
+        self.driver.maximize_window()
         if id != "0" and id != self.__conversation_id:
             self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.logger.debug('Ensuring Cloudflare cookies...')
