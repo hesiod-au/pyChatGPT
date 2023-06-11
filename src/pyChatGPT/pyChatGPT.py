@@ -23,6 +23,8 @@ import os
 
 cf_challenge_form = (By.ID, 'challenge-form')
 
+#chatgpt_web_search_finished = (By.XPATH, "//div[text()='Finished browsing'")
+#chatgpt_web_search = (By.CLASS_NAME, 'text-xs')
 chatgpt_textbox = (By.TAG_NAME, 'textarea')
 chatgpt_streaming = (By.CLASS_NAME, 'result-streaming')
 chatgpt_big_response = (By.XPATH, '//div[@class="flex-1 overflow-hidden"]//div[p]')
@@ -451,6 +453,9 @@ class ChatGPT:
             self.driver.get(f'{chatgpt_chat_url}/c/{self.__conversation_id}')
         self.logger.debug('Ensuring Cloudflare cookies...')
         self.__ensure_cf()
+        # Find existing message list len
+        responses_count= len(self.driver.find_elements(*chatgpt_small_response))
+
         self.logger.debug('Sending message...')
         textbox = WebDriverWait(self.driver, 5).until(
             EC.element_to_be_clickable(chatgpt_textbox)
@@ -465,7 +470,9 @@ class ChatGPT:
             textbox,
             message,
         )
+        send_button = textbox.find_element(By.XPATH, './following-sibling::button')
         textbox.send_keys(Keys.ENTER)
+        send_button.click()
         self.driver.minimize_window()
 
         if stream:
@@ -474,28 +481,37 @@ class ChatGPT:
                 time.sleep(0.1)
             return print()
 
+        self.logger.debug('Waiting for Bing Search to finish  if present...')
+        retries = 0
+        while retries < 30:
+            new_responses_count= len(self.driver.find_elements(*chatgpt_small_response))
+            if new_responses_count > responses_count:
+                break
+            else:
+                retries += 1
+                time.sleep(10)
         self.logger.debug('Waiting for completion...')
         WebDriverWait(self.driver, 120).until_not(
             EC.presence_of_element_located(chatgpt_streaming)
         )
-
-        self.logger.debug('Getting response...')
         responses = self.driver.find_elements(*chatgpt_big_response)
+        if not self.__conversation_id:
+            id_to_use = "unknown"
+        else:
+            id_to_use = self.__conversation_id
+
         if responses:
             response = responses[-1]
             if 'text-red' in response.get_attribute('class'):
                 self.logger.debug('Response is an error')
                 raise ValueError(response.text)
+
         response = self.driver.find_elements(*chatgpt_small_response)[-1]
 
         content = markdownify(response.get_attribute('innerHTML')).replace(
             'Copy code`', '`'
         )
         self.driver.minimize_window()
-        if not self.__conversation_id:
-            id_to_use = "unknown"
-        else:
-            id_to_use = self.__conversation_id
         return {
             "id": id_to_use,
             "object": "chat.completion",
