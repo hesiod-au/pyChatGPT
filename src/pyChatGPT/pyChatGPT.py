@@ -248,6 +248,27 @@ class ChatGPT:
         self.driver.minimize_window()
         Thread(target=self.__keep_alive, daemon=True).start()
 
+    def __get_conversation_id(self) -> str:
+        self.reset_conversation()
+        today_element = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//*[text()='Today']"))
+        )
+        parent_element = today_element.find_element(By.XPATH, "./..")
+        ol_sibling = parent_element.find_element(By.XPATH, "./following-sibling::ol")
+        first_item = ol_sibling.find_element(By.XPATH, "./li[1]")
+        first_item.click()
+        pattern = r'^[a-zA-Z0-9-]+$'
+        retries = 0
+        id = "0"
+        while retries < 15:
+            id = self.driver.current_url.split('/')[-1]
+            if re.match(pattern, id):
+                break
+            else:
+                retries += 1
+                time.sleep(1)
+        return id
+
     def __select_gpt4(self) -> None:
         self.driver.get(f'{chatgpt_chat_url}/?model=gpt-4-browsing')
         # partial_id = "headlessui-listbox-button-"
@@ -495,10 +516,6 @@ class ChatGPT:
             EC.presence_of_element_located(chatgpt_streaming)
         )
         responses = self.driver.find_elements(*chatgpt_big_response)
-        if not self.__conversation_id:
-            id_to_use = "unknown"
-        else:
-            id_to_use = self.__conversation_id
 
         if responses:
             response = responses[-1]
@@ -511,9 +528,12 @@ class ChatGPT:
         content = markdownify(response.get_attribute('innerHTML')).replace(
             'Copy code`', '`'
         )
+        if not self.__conversation_id:
+            id = self.__get_conversation_id()
+            self.__conversation_id = id
         self.driver.minimize_window()
         return {
-            "id": id_to_use,
+            "id": self.__conversation_id,
             "object": "chat.completion",
             "model": "gpt",
             "usage":  {
