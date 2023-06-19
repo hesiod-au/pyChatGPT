@@ -257,12 +257,12 @@ class ChatGPT:
         ol_sibling = parent_element.find_element(By.XPATH, "./following-sibling::ol")
         first_item = ol_sibling.find_element(By.XPATH, "./li[1]")
         first_item.click()
-        pattern = r'^[a-zA-Z0-9-]+$'
         retries = 0
         id = "0"
+        time.sleep(2)
         while retries < 15:
-            id = self.driver.current_url.split('/')[-1]
-            if re.match(pattern, id):
+            if self.driver.current_url.split('/')[-2] == 'c':
+                id = self.driver.current_url.split('/')[-1]
                 break
             else:
                 retries += 1
